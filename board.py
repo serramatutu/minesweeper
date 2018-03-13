@@ -59,10 +59,15 @@ class Tile:
         if self._state is not TileState.VISIBLE:
             self._state = s
 
+            
+            
+            
+            
 class Board:
-    def __init__(self, size=(20, 20), mine_ratio=0.15625):
-        self._width = size[0]
-        self._height = size[1]
+    def __init__(self, screen_size, field_size=(20, 20), mine_ratio=0.15625):
+        self._width = field_size[0]
+        self._height = field_size[1]
+        self._screen_size = screen_size
         
         self._board = []
         for i in range(0, self._height):
@@ -93,51 +98,58 @@ class Board:
                     
                 if not self._board[nrow][ncol].isMine:
                     self._board[nrow][ncol].value += 1
-            
-            
         
-    def get_surface(self, screen_size):
-        s = pygame.Surface(screen_size)
-        s.convert()
-        
-        font = pygame.font.Font(None, 20)
+        # inicializa superfície para desenho
+        self._surface = pygame.Surface(screen_size)
+        self._surface.convert()
+        self._font = pygame.font.Font(None, 20)
         
         w = math.floor(screen_size[0]/self._width)
         h = math.floor(screen_size[1]/self._height)
-        
-        text_sizes = {}
-        
         for row in range(0, self._height):
             for col in range(0, self._width):
-                tile = self._board[row][col]
-                text = str(tile)
-                           
-                if not text in text_sizes:
-                    text_sizes[text] = font.size(text)
-                           
-                size = text_sizes[text]
-                
-                background = (230, 230, 230) if (col - row) % 2 == 0 else (200, 200, 200)
-                    
-                # cor dos tiles
-                color = (0, 180, 0)
-                if tile.state is TileState.FLAGGED:
-                    color = (0, 0, 0)
-                elif 1 <= tile.value <= 2:
-                    color = (255, 128, 0)
-                elif tile.value > 2:
-                    color = (255, 0, 0)
-                elif tile.isMine:
-                    color = (0, 0, 255)
-                    
-                
-                pygame.draw.rect(s, background, pygame.Rect(col * w, row * h, w, h)) # desenha o fundo
-                
-                s.blit(font.render(text,
-                                   True, 
-                                   color, 
-                                   background),
-                       (col * w + (w - size[0])/2, row * h + (h - size[1])/2)
-                      )
-    
+                pygame.draw.rect(self._surface, 
+                                 self._get_background_color(row, col), 
+                                 pygame.Rect(col * w, 
+                                             row * h, 
+                                             w, 
+                                             h)) # desenha o fundo
+        
+    def _get_background_color(self, row, col):
+        return (230, 230, 230) if (col - row) % 2 == 0 else (200, 200, 200)
+            
+        
+    def report(self, row, col, state):                       
+        tile = self._board[row][col]
+        tile.state = state
+        
+        text = str(tile)
+
+        size = self._font.size(text)
+
+        # cor do tile
+        color = (0, 180, 0)
+        if tile.state is TileState.FLAGGED:
+            color = (0, 0, 0)
+        elif 1 <= tile.value <= 2:
+            color = (255, 128, 0)
+        elif tile.value > 2:
+            color = (255, 0, 0)
+        elif tile.isMine:
+            color = (0, 0, 255)
+
+        w = math.floor(self._screen_size[0]/self._width)
+        h = math.floor(self._screen_size[1]/self._height)
+        self._surface.blit(self._font.render(text,
+                                             True,
+                                             color,
+                                             self._get_background_color(row, col)),
+                           (col * w + (w - size[0])/2, 
+                            row * h + (h - size[1])/2)
+                          )
+
+    @property
+    def surface(self):
+        s = pygame.Surface(self._screen_size)
+        s.blit(self._surface, (0, 0))
         return s
