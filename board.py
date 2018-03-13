@@ -22,7 +22,11 @@ class Tile:
             return ''
         elif self._state is TileState.FLAGGED:
             return 'F'
-        return str(self._value)
+        
+        if self._value >= 0:
+            return str(self._value)
+            
+        return 'M'
         
     def setMine(self):
         self._value = MINE
@@ -105,17 +109,34 @@ class Board:
         
         for row in range(0, self._height):
             for col in range(0, self._width):
-                text = str(self._board[row][col])
+                tile = self._board[row][col]
+                text = str(tile)
                            
                 if not text in text_sizes:
                     text_sizes[text] = font.size(text)
                            
                 size = text_sizes[text]
-                           
-                s.blit(font.render(text, 
+                
+                background = (230, 230, 230) if (col - row) % 2 == 0 else (200, 200, 200)
+                    
+                # cor dos tiles
+                color = (0, 180, 0)
+                if tile.state is TileState.FLAGGED:
+                    color = (0, 0, 0)
+                elif 1 <= tile.value <= 2:
+                    color = (255, 128, 0)
+                elif tile.value > 2:
+                    color = (255, 0, 0)
+                elif tile.isMine:
+                    color = (0, 0, 255)
+                    
+                
+                pygame.draw.rect(s, background, pygame.Rect(col * w, row * h, w, h)) # desenha o fundo
+                
+                s.blit(font.render(text,
                                    True, 
-                                   (255, 255, 255), 
-                                   (0, 0, 0)),
+                                   color, 
+                                   background),
                        (col * w + (w - size[0])/2, row * h + (h - size[1])/2)
                       )
     
