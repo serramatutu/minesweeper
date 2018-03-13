@@ -1,10 +1,59 @@
 from array import array
 import math
 import random
+from enum import Enum
     
 import pygame
+
+class TileState(Enum):
+    INVISIBLE = 0
+    FLAGGED = 1
+    VISIBLE = 2
     
 MINE = -1
+
+class Tile:
+    def __init__(self, value=0, state=TileState.INVISIBLE):
+        self._value=value
+        self._state=state
+        
+    def __str__(self):
+        if self._state is TileState.INVISIBLE:
+            return ''
+        elif self._state is TileState.FLAGGED:
+            return 'F'
+        return str(self._value)
+        
+    def setMine(self):
+        self._value = MINE
+        
+    @property
+    def hasMineNeighbors(self):
+        return self._value > 0
+        
+    @property
+    def isMine(self):
+        return self._value == MINE
+    
+    @property
+    def value(self):
+        return self._value;
+    
+    @value.setter
+    def value(self, v):
+        if self.isMine: 
+            raise ValueError("Tile is mine and cannot be changed")
+        
+        self._value = v
+        
+    @property
+    def state(self):
+        return self._state
+    
+    @state.setter
+    def state(self, s):
+        if self._state is not TileState.VISIBLE:
+            self._state = s
 
 class Board:
     def __init__(self, size=(20, 20), mine_ratio=0.15625):
@@ -13,7 +62,10 @@ class Board:
         
         self._board = []
         for i in range(0, self._height):
-            self._board.append([0] * self._width)
+            l = []
+            for i in range(0, self._width):
+                l.append(Tile())
+            self._board.append(l)
         
         mines = math.floor(mine_ratio * self._width * self._height) # quantidade de minas
         
@@ -22,10 +74,10 @@ class Board:
             while True:
                 row, col = random.randint(0, self._height - 1), random.randint(0, self._width - 1)
                 
-                if (self._board[row][col] != MINE):
+                if (not self._board[row][col].isMine):
                     break
             
-            self._board[row][col] = MINE
+            self._board[row][col].setMine()
             
             for i in range(0, 9):
                 nrow = row + i % 3 - 1
@@ -35,8 +87,8 @@ class Board:
                     ncol < 0 or ncol >= self._width):
                     continue
                     
-                if not self._board[nrow][ncol] == MINE:
-                    self._board[nrow][ncol] += 1
+                if not self._board[nrow][ncol].isMine:
+                    self._board[nrow][ncol].value += 1
             
             
         
