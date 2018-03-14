@@ -95,7 +95,7 @@ class Board:
             while True:
                 row, col = random.randint(0, self._height - 1), random.randint(0, self._width - 1)
                 
-                if (row != clicked_row or col != clicked_col or 
+                if ((row != clicked_row or col != clicked_col) and 
                     not self._board[row][col].isMine):
                     break
             
@@ -131,7 +131,35 @@ class Board:
 
     
     def _background_color(self, row, col):
+        tile = self._board[row][col]
+
+        if tile.state is TileState.FLAGGED:
+            return (230, 150, 230) if (col - row) % 2 == 0 else (200, 120, 200)
+        elif tile.state is TileState.VISIBLE:
+            if tile.isMine:
+                return (0, 0, 0)
+            if tile.value == 0:
+                return (150, 230, 150) if (col - row) % 2 == 0 else (120, 200, 120)
+            if 1 <= tile.value <= 2:
+                return (230, 230, 150) if (col - row) % 2 == 0 else (200, 200, 120) 
+            if tile.value > 2:
+                return (230, 150, 150) if (col - row) % 2 == 0 else (200, 120, 120) 
+
         return (230, 230, 230) if (col - row) % 2 == 0 else (200, 200, 200)
+
+    def _font_color(self, row, col):
+        tile = self._board[row][col]
+
+        if tile.state is TileState.FLAGGED:
+            return (120, 0, 120)
+        if tile.isMine:
+            return (255, 0, 0)
+        if 1 <= tile.value <= 2:
+            return (200, 100, 0)
+        if tile.value > 2:
+            return (200, 0, 0)
+
+        return (0, 180, 0)
             
     def tile_size(self):
         return (math.floor(self._screen_size[0]/self._width),
@@ -145,10 +173,8 @@ class Board:
     def _flood(self, row, col):
         queue = deque()
         queue.append((row, col))
-        
-        x_offset = [1, 0, -1, 0]
-        y_offset = [0, 1, 0, -1]
 
+        processed = set() # evita que coloque o mesmo tile duas vezes na fila
         while len(queue) > 0:
             row, col = queue.popleft()
 
@@ -156,9 +182,9 @@ class Board:
             self._update_tile(row, col, TileState.VISIBLE)
 
             accept = self._board[row][col].value is 0
-            for i in range(0, 4):
-                nrow = row + x_offset[i]
-                ncol = col + y_offset[i]
+            for i in range(0, 9):
+                nrow = row + i % 3 - 1
+                ncol = col + i // 3 - 1
 
                 if (nrow < 0 or nrow >= self._height or
                     ncol < 0 or ncol >= self._width):
@@ -166,12 +192,16 @@ class Board:
                 
                 tile = self._board[nrow][ncol]
 
-                if tile.state is not TileState.INVISIBLE: # Sò reprocessa se for invisível
+                if tile.state is not TileState.INVISIBLE: # Só reprocessa se for invisível
                     continue
                     
                 # adiciona todos os vizinhos elegíveis na fila
-                if accept and (accept or tile.value is 0) and not tile.isMine:
-                    queue.append((nrow, ncol))
+                pos = (nrow, ncol)
+                if (not pos in processed and 
+                    (accept and (accept or tile.value is 0))
+                    and not tile.isMine):
+                    queue.append(pos)
+                    processed.add(pos)
 
     def report(self, row, col, state):
         if not self._generated:
@@ -179,11 +209,12 @@ class Board:
 
         if state is TileState.INVISIBLE:
             raise ValueError()
+
         if self._board[row][col].isMine and state is not TileState.FLAGGED:
             self._die()
             return False
         
-        if (self._remaining_tiles <= 0):
+        if self._remaining_tiles <= 0:
             self._win()
             return False
 
@@ -210,18 +241,8 @@ class Board:
         text = str(tile)
         size = self._font.size(text)
 
-        # cor do tile
-        color = (0, 180, 0)
-        if tile.state is TileState.FLAGGED:
-            color = (0, 0, 0)
-        elif 1 <= tile.value <= 2:
-            color = (255, 128, 0)
-        elif tile.value > 2:
-            color = (255, 0, 0)
-        elif tile.isMine:
-            color = (0, 0, 255)
-
         w, h = self.tile_size()
+        color = self._font_color(row, col)
         background = self._background_color(row, col)
         pygame.draw.rect(self._surface, # limpa o fundo
                          background,

@@ -8,5 +8,4 @@ def main():
     s.run()
 
 if __name__ == "__main__": 
-    import sys
     main()
