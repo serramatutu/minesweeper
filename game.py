@@ -5,7 +5,6 @@ import pygame
 from pygame.locals import * # constantes
 
 from board import Board, TileState # minesweeper packages
-from mouse import MouseButtons
 
 
 class Sweeper:
@@ -19,7 +18,7 @@ class Sweeper:
     
     def _mousedown(self, e):
         state = TileState.VISIBLE
-        if e.button is MouseButtons.RIGHT:
+        if e.button == 3:
             state = TileState.FLAGGED
 
         row, col = self._board.position(e.pos)
