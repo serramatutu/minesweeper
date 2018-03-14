@@ -49,7 +49,10 @@ class Tile:
             self._value = v
 
             
-            
+class BoardState(Enum):
+    IN_GAME = 0
+    WON = 1
+    LOST = 2  
             
             
 class Board:
@@ -65,9 +68,9 @@ class Board:
                 l.append(Tile())
             self._board.append(l)
         
-        mines = int(math.floor(mine_ratio * self._width * self._height)) # quantidade de minas
+        self._mines = int(math.floor(mine_ratio * self._width * self._height)) # quantidade de minas
 
-        for i in range(0, mines):
+        for i in range(0, self._mines):
             # inicializa a mina em posição aleatória
             while True:
                 row, col = random.randint(0, self._height - 1), random.randint(0, self._width - 1)
@@ -88,13 +91,17 @@ class Board:
                 if not self._board[nrow][ncol].isMine:
                     self._board[nrow][ncol].value += 1
         
+        # condições de vitória
+        self._flagged_mines = 0
+        self._remaining_tiles = self._width * self._height - self._mines
+
         # inicializa superfície para desenho
         self._surface = pygame.Surface(screen_size)
         self._surface.convert()
-        self._font = pygame.font.Font(None, 20)
+        w, h = self.tile_size()
+        self._font = pygame.font.Font(None, max(w, h))
         
-        w = math.floor(screen_size[0]/self._width)
-        h = math.floor(screen_size[1]/self._height)
+        w, h = self.tile_size()
         for row in range(0, self._height):
             for col in range(0, self._width):
                 pygame.draw.rect(self._surface, 
@@ -103,7 +110,19 @@ class Board:
                                              row * h, 
                                              w, 
                                              h)) # desenha o fundo
+
+        self._state = BoardState.IN_GAME
         
+    @property
+    def state(self):
+        return self._state
+    
+    def _die(self):
+        self._state = BoardState.LOST
+
+    def _win(self):
+        self._state = BoardState.WON
+
     @property
     def size(self):
         return (self._width, self._height)
@@ -112,9 +131,14 @@ class Board:
     def _background_color(self, row, col):
         return (230, 230, 230) if (col - row) % 2 == 0 else (200, 200, 200)
             
+    def tile_size(self):
+        return (math.floor(self._screen_size[0]/self._width),
+                math.floor(self._screen_size[1]/self._height))
+
     def position(self, screen_pos):
-        return (int(math.floor(screen_pos[1]/self._height)),
-                int(math.floor(screen_pos[0]/self._width)))
+        w, h = self.tile_size()
+        return (int(math.floor(screen_pos[1]/h)),
+                int(math.floor(screen_pos[0]/w)))
     
     def _flood(self, row, col):
         queue = deque()
@@ -129,30 +153,61 @@ class Board:
             # atualiza o quadrado atual
             self._update_tile(row, col, TileState.VISIBLE)
 
-            accept_non_zero = self._board[row][col].value is 0
+            accept = self._board[row][col].value is 0
             for i in range(0, 4):
                 nrow = row + x_offset[i]
                 ncol = col + y_offset[i]
 
-                tile = self._board[nrow][ncol]
                 if (nrow < 0 or nrow >= self._height or
-                    ncol < 0 or ncol >= self._width or
-                    tile.state is not TileState.INVISIBLE): # Sò reprocessa se for invisível
+                    ncol < 0 or ncol >= self._width):
+                    continue
+                
+                tile = self._board[nrow][ncol]
+
+                if tile.state is not TileState.INVISIBLE: # Sò reprocessa se for invisível
                     continue
                     
                 # adiciona todos os vizinhos elegíveis na fila
-                if (accept_non_zero or tile.value is 0) and not tile.isMine:
+                if accept and (accept or tile.value is 0) and not tile.isMine:
                     queue.append((nrow, ncol))
 
     def report(self, row, col, state):
+        if state is TileState.INVISIBLE:
+            raise ValueError()
+        if self._board[row][col].isMine and state is not TileState.FLAGGED:
+            self._die()
+            return False
+        
+        if (self._flagged_mines == self._mines or
+            self._remaining_tiles <= 0):
+            self._win()
+            return False
+
         if self._board[row][col].value is 0:
             self._flood(row, col)
         else:
             self._update_tile(row, col, state)
 
+        return True
+
     def _update_tile(self, row, col, state):    
         tile = self._board[row][col]
+
+        if (tile.state is TileState.FLAGGED and
+            state is TileState.FLAGGED):
+            state = TileState.INVISIBLE
+
         tile.state = state
+
+        if state is TileState.FLAGGED: #FLAGGED
+            if tile.isMine:
+                self._flagged_mines += 1
+        elif state is TileState.VISIBLE: # VISIBLE
+            self._remaining_tiles -= 1
+        elif tile.isMine: # caso desflagou a mina
+            self._flagged_mines -= 1
+            
+
 
         text = str(tile)
         size = self._font.size(text)
@@ -168,12 +223,15 @@ class Board:
         elif tile.isMine:
             color = (0, 0, 255)
 
-        w = math.floor(self._screen_size[0]/self._width)
-        h = math.floor(self._screen_size[1]/self._height)
+        w, h = self.tile_size()
+        background = self._background_color(row, col)
+        pygame.draw.rect(self._surface, # limpa o fundo
+                         background,
+                         pygame.Rect(col * w, row * h, w, h))
         self._surface.blit(self._font.render(text,
                                              True,
                                              color,
-                                             self._background_color(row, col)),
+                                             background),
                            (col * w + (w - size[0])/2, 
                             row * h + (h - size[1])/2)
                           )
@@ -183,13 +241,12 @@ class Board:
         s.blit(self._surface, (0, 0))
         
         if mousepos is not None:
-            pos = self.position(mousepos)
-            w = math.floor(self._screen_size[0]/self._width)
-            h = math.floor(self._screen_size[1]/self._height)
+            row, col = self.position(mousepos)
+            w, h = self.tile_size()
             pygame.draw.rect(s, 
                              (130, 130, 130), 
-                             pygame.Rect(pos[1] * w, 
-                                         pos[0] * h, 
+                             pygame.Rect(col * w, 
+                                         row * h, 
                                          w, 
                                          h),
                                          2)

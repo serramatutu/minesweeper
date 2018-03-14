@@ -4,9 +4,9 @@
 from game import Sweeper
 
 def main():
-    s = Sweeper()
+    s = Sweeper(screen_size=(600, 600), field_size=(30, 30))
     s.run()
 
-main()
-
-if __name__ == "__main__": main()
+if __name__ == "__main__": 
+    import sys
+    main()
