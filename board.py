@@ -22,7 +22,7 @@ class Tile:
         self.state=state
         
     def __str__(self):
-        if self.state is TileState.INVISIBLE:
+        if self.state is TileState.INVISIBLE or self.value == 0:
             return ''
         elif self.state is TileState.FLAGGED:
             return 'F'
@@ -213,15 +213,16 @@ class Board:
         if self._board[row][col].isMine and state is not TileState.FLAGGED:
             self._die()
             return False
-        
-        if self._remaining_tiles <= 0:
-            self._win()
-            return False
 
         if self._board[row][col].value is 0:
             self._flood(row, col)
         else:
             self._update_tile(row, col, state)
+
+        # checa se ganhou
+        if self._remaining_tiles <= 0:
+            self._win()
+            return False
 
         return True
 
