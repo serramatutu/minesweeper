@@ -61,6 +61,8 @@ class Board:
         self._height = field_size[1]
         self._screen_size = screen_size
         
+        self._generated = False
+        # inicializa a board vazia
         self._board = []
         for i in range(0, self._height):
             l = []
@@ -69,32 +71,8 @@ class Board:
             self._board.append(l)
         
         self._mines = int(math.floor(mine_ratio * self._width * self._height)) # quantidade de minas
-
-        for i in range(0, self._mines):
-            # inicializa a mina em posição aleatória
-            while True:
-                row, col = random.randint(0, self._height - 1), random.randint(0, self._width - 1)
-                
-                if (not self._board[row][col].isMine):
-                    break
-            
-            self._board[row][col].setMine()
-            
-            for i in range(0, 9):
-                nrow = row + i % 3 - 1
-                ncol = col + i // 3 - 1
-
-                if (nrow < 0 or nrow >= self._height or # porco mas caguei
-                    ncol < 0 or ncol >= self._width):
-                    continue
-                    
-                if not self._board[nrow][ncol].isMine:
-                    self._board[nrow][ncol].value += 1
+        self._remaining_tiles = self._width * self._height - self._mines # condição de vitória
         
-        # condições de vitória
-        self._flagged_mines = 0
-        self._remaining_tiles = self._width * self._height - self._mines
-
         # inicializa superfície para desenho
         self._surface = pygame.Surface(screen_size)
         self._surface.convert()
@@ -111,8 +89,32 @@ class Board:
                                              w, 
                                              h)) # desenha o fundo
 
+    def _generate(self, clicked_row, clicked_col):
+        for i in range(0, self._mines):
+            # inicializa a mina em posição aleatória
+            while True:
+                row, col = random.randint(0, self._height - 1), random.randint(0, self._width - 1)
+                
+                if (row != clicked_row or col != clicked_col or 
+                    not self._board[row][col].isMine):
+                    break
+            
+            self._board[row][col].setMine()
+            
+            for i in range(0, 9):
+                nrow = row + i % 3 - 1
+                ncol = col + i // 3 - 1
+
+                if (nrow < 0 or nrow >= self._height or # porco mas caguei
+                    ncol < 0 or ncol >= self._width):
+                    continue
+                    
+                if not self._board[nrow][ncol].isMine:
+                    self._board[nrow][ncol].value += 1
+
         self._state = BoardState.IN_GAME
-        
+        self._generated = True
+
     @property
     def state(self):
         return self._state
@@ -172,14 +174,16 @@ class Board:
                     queue.append((nrow, ncol))
 
     def report(self, row, col, state):
+        if not self._generated:
+            self._generate(row, col)
+
         if state is TileState.INVISIBLE:
             raise ValueError()
         if self._board[row][col].isMine and state is not TileState.FLAGGED:
             self._die()
             return False
         
-        if (self._flagged_mines == self._mines or
-            self._remaining_tiles <= 0):
+        if (self._remaining_tiles <= 0):
             self._win()
             return False
 
@@ -199,14 +203,8 @@ class Board:
 
         tile.state = state
 
-        if state is TileState.FLAGGED: #FLAGGED
-            if tile.isMine:
-                self._flagged_mines += 1
-        elif state is TileState.VISIBLE: # VISIBLE
+        if state is TileState.VISIBLE: # VISIBLE
             self._remaining_tiles -= 1
-        elif tile.isMine: # caso desflagou a mina
-            self._flagged_mines -= 1
-            
 
 
         text = str(tile)
