@@ -10,6 +10,11 @@ class Sweeper:
     PANEL_MARGIN = 40
     DEFAULT_SCREEN_SIZE = 400
     DEFAULT_FIELD_SIZE = 25
+
+    @staticmethod
+    def screen_size(field_size, tile_size):
+        return (field_size[0] * tile_size[0], field_size[1] * tile_size[1])
+
     def __init__(self, field_size=None, screen_size=None):
         pygame.init()
 
