@@ -22,10 +22,10 @@ class Tile:
         self.state=state
         
     def __str__(self):
-        if self.state is TileState.INVISIBLE or self.value == 0:
-            return ''
-        elif self.state is TileState.FLAGGED:
+        if self.state is TileState.FLAGGED:
             return 'F'
+        elif self.state is TileState.INVISIBLE or self.value == 0:
+            return ''
         
         if self.value >= 0:
             return str(self.value)
