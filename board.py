@@ -41,7 +41,7 @@ class Tile:
     
     @property
     def value(self):
-        return self._value;
+        return self._value
     
     @value.setter
     def value(self, v):
@@ -229,6 +229,11 @@ class Board:
             return False
 
         return True
+
+    def show_all(self):
+        for row in range(0, self._height):
+            for col in range(0, self._width):
+                self._update_tile(row, col, TileState.VISIBLE)
 
     def _update_tile(self, row, col, state):    
         tile = self._board[row][col]

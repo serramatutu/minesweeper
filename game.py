@@ -90,19 +90,20 @@ class Sweeper:
                                    (0, 0, 0)),
                                    (5, int((panel_size[1] - mine_text_size[1])/2)))
 
-            time_text = "{0:.3f}".format((pygame.time.get_ticks() - self._start_tick)/float(1000))
-            panel.blit(font.render(time_text, 
-                                   True,
-                                   (255, 255, 255),
-                                   (0, 0, 0)),
-                                   (panel_size[0] - time_text_size[0] - 5, int((panel_size[1] - time_text_size[1])/2)))
+            if self._running:
+                time_text = "{0:.3f}".format((pygame.time.get_ticks() - self._start_tick)/float(1000))
+                panel.blit(font.render(time_text, 
+                                    True,
+                                    (255, 255, 255),
+                                    (0, 0, 0)),
+                                    (panel_size[0] - time_text_size[0] - 5, int((panel_size[1] - time_text_size[1])/2)))
             background.blit(panel, (0, 0))
 
             self._screen.blit(background, (0, 0))
             pygame.display.flip() # atualiza tela
 
             if end:
-                self.end(self._board.state)
+                self.end()
                 break
         
         while True:
@@ -112,24 +113,32 @@ class Sweeper:
                     event.type == KEYDOWN):
                     return
     
-    def end(self, state):
+    def end(self):
         self._time = pygame.time.get_ticks() - self._start_tick
 
-        font = pygame.font.Font(None, 30)
+        font = pygame.font.Font(None, 60)
 
         text = ''
-        if state is BoardState.WON:
+        if self._board.state is BoardState.WON:
             text = 'Very much good presentation'
         else:
+            self._board.show_all()
             text = 'You lost 2 points'
 
         screen_size = self._screen.get_size()
         text_size = font.size(text)
 
+        # desenha a mensagem na tela
+        self._screen.blit(self._board.surface(), (0, Sweeper.PANEL_MARGIN))
+        s = pygame.Surface((text_size[0] + 50, text_size[1] + 50))
+        s.set_alpha(180)
+        size = s.get_size()
+        pos = (int((screen_size[0] - size[0])/2), int((screen_size[1] - size[1])/2))
+        self._screen.blit(s, pos)
         self._screen.blit(font.render(text, 
                                       True, 
-                                      (0, 0, 0)),
-                          (int((screen_size[0] - text_size[0])/2),
-                          int((screen_size[1] - text_size[1])/2)))
+                                      (255, 255, 255)),
+                          (pos[0] + 25, pos[1] + 25))
+
         pygame.display.flip() # atualiza tela
 
