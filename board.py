@@ -138,7 +138,7 @@ class Board:
         tile = self._board[row][col]
 
         if tile.state is TileState.FLAGGED:
-            return (230, 150, 230) if (col - row) % 2 == 0 else (200, 120, 200)
+            return (150, 150, 230) if (col - row) % 2 == 0 else (120, 120, 200)
         elif tile.state is TileState.VISIBLE:
             if tile.isMine:
                 return (0, 0, 0)
@@ -155,7 +155,7 @@ class Board:
         tile = self._board[row][col]
 
         if tile.state is TileState.FLAGGED:
-            return (120, 0, 120)
+            return (0, 0, 120)
         if tile.isMine:
             return (255, 0, 0)
         if 1 <= tile.value <= 2:
