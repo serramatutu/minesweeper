@@ -12,30 +12,40 @@ class Sweeper:
     DEFAULT_FIELD_SIZE = 25
     def __init__(self, field_size=None, screen_size=None):
         pygame.init()
+
         if screen_size is None:
-            screen_size = (Sweeper.DEFAULT_SCREEN_SIZE, 
-                           Sweeper.DEFAULT_SCREEN_SIZE + Sweeper.PANEL_MARGIN)
-        else:
-            screen_size = (screen_size[0], screen_size[1] + Sweeper.PANEL_MARGIN)
+            screen_size = (Sweeper.DEFAULT_SCREEN_SIZE, Sweeper.DEFAULT_SCREEN_SIZE)
+        self._screen_size = (screen_size[0], screen_size[1] + Sweeper.PANEL_MARGIN)
 
         if field_size is None:
             field_size = (Sweeper.DEFAULT_FIELD_SIZE, Sweeper.DEFAULT_FIELD_SIZE)
+        self._field_size = field_size
 
-        self._screen = pygame.display.set_mode(screen_size)
+        self._screen = pygame.display.set_mode(self._screen_size)
+        self._board = None
+        self._running = False
+        self._start_tick = 0
+        self._time = -1
+
+    def _restart(self):
         pygame.display.set_caption('Minesweeper')
         pygame.display.flip()
 
-        self._board = Board(screen_size=(screen_size[0], screen_size[1] - Sweeper.PANEL_MARGIN), 
-                            field_size=field_size)
+        self._board = Board(screen_size=(self._screen_size[0], self._screen_size[1] - Sweeper.PANEL_MARGIN), 
+                            field_size=self._field_size)
 
         self._running = False
         self._start_tick = 0
         self._time = -1
     
     def _mousedown(self, e):
-        state = TileState.VISIBLE
+        state = TileState.INVISIBLE
         if e.button == 3:
             state = TileState.FLAGGED
+        elif e.button == 1:
+            state = TileState.VISIBLE
+        else:
+            return True
 
         pos = (e.pos[0], e.pos[1] - Sweeper.PANEL_MARGIN)
         row, col = self._board.position(pos)
@@ -55,63 +65,61 @@ class Sweeper:
         panel.convert()
         
         font = pygame.font.Font(None, 40)
-        time_text_size = font.size('0000.000')
-        mine_text = 'minas: ' + str(self._board.mines)
-        mine_text_size = font.size(mine_text)
 
         clock = pygame.time.Clock()
 
-        while True:
-            clock.tick(60) # 60fps
+        continue_playing = True
+        while continue_playing:
+            self._restart()
 
-            end = False
-            for event in pygame.event.get(): # Processa todos os eventos
-                if event.type == QUIT:
-                    return
-                if event.type == MOUSEBUTTONDOWN:
-                    v = not self._mousedown(event)
-                    if not end:
-                        end = v
+            time_text_size = font.size('0000.000')
+            mine_text = 'minas: ' + str(self._board.mines)
+            mine_text_size = font.size(mine_text)
+            while True:
+                clock.tick(60) # 60fps
 
-            # desenha o mouse     
-            mousepos = None
-            if pygame.mouse.get_focused():
-                mousepos = pygame.mouse.get_pos()
-                mousepos = (mousepos[0], mousepos[1] - Sweeper.PANEL_MARGIN)
-            background.blit(self._board.surface(mousepos), (0, Sweeper.PANEL_MARGIN))
+                end = False
+                for event in pygame.event.get(): # Processa todos os eventos
+                    if event.type == QUIT:
+                        return
+                    if event.type == MOUSEBUTTONDOWN:
+                        v = not self._mousedown(event)
+                        if not end:
+                            end = v
 
-            panel_size = panel.get_size()
-            panel.fill((0, 0, 0))
+                # desenha o mouse     
+                mousepos = None
+                if pygame.mouse.get_focused():
+                    mousepos = pygame.mouse.get_pos()
+                    mousepos = (mousepos[0], mousepos[1] - Sweeper.PANEL_MARGIN)
+                background.blit(self._board.surface(mousepos), (0, Sweeper.PANEL_MARGIN))
 
-            # desenha o painel
-            panel.blit(font.render(mine_text, 
-                                   True,
-                                   (255, 255, 255),
-                                   (0, 0, 0)),
-                                   (5, int((panel_size[1] - mine_text_size[1])/2)))
+                panel_size = panel.get_size()
+                panel.fill((0, 0, 0))
 
-            if self._running:
-                time_text = "{0:.3f}".format((pygame.time.get_ticks() - self._start_tick)/float(1000))
-                panel.blit(font.render(time_text, 
+                # desenha o painel
+                panel.blit(font.render(mine_text, 
                                     True,
                                     (255, 255, 255),
                                     (0, 0, 0)),
-                                    (panel_size[0] - time_text_size[0] - 5, int((panel_size[1] - time_text_size[1])/2)))
-            background.blit(panel, (0, 0))
+                                    (5, int((panel_size[1] - mine_text_size[1])/2)))
 
-            self._screen.blit(background, (0, 0))
-            pygame.display.flip() # atualiza tela
+                if self._running:
+                    time_text = "{0:.3f}".format((pygame.time.get_ticks() - self._start_tick)/float(1000))
+                    panel.blit(font.render(time_text, 
+                                        True,
+                                        (255, 255, 255),
+                                        (0, 0, 0)),
+                                        (panel_size[0] - time_text_size[0] - 5, int((panel_size[1] - time_text_size[1])/2)))
+                background.blit(panel, (0, 0))
 
-            if end:
-                self.end()
-                break
-        
-        while True:
-            for event in pygame.event.get():
-                if (event.type == QUIT or 
-                    event.type == MOUSEBUTTONDOWN or
-                    event.type == KEYDOWN):
-                    return
+                self._screen.blit(background, (0, 0))
+                pygame.display.flip() # atualiza tela
+
+                if end:
+                    self.end()
+                    continue_playing = self.waitstart(clock)
+                    break
     
     def end(self):
         self._time = pygame.time.get_ticks() - self._start_tick
@@ -122,9 +130,9 @@ class Sweeper:
         if self._board.state is BoardState.WON:
             text = 'Very much good presentation'
         else:
-            self._board.show_all()
             text = 'You lost 2 points'
 
+        self._board.show_all()
         screen_size = self._screen.get_size()
         text_size = font.size(text)
 
@@ -141,4 +149,14 @@ class Sweeper:
                           (pos[0] + 25, pos[1] + 25))
 
         pygame.display.flip() # atualiza tela
+    
+    def waitstart(self, clock):
+        while True:
+            clock.tick(60)
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    return False 
+                if event.type == KEYDOWN:
+                    return event.key != 27 # Esc
+
 

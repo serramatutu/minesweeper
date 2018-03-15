@@ -4,7 +4,7 @@
 from game import Sweeper
 
 def main():
-    s = Sweeper(screen_size=(600, 600), field_size=(30, 30))
+    s = Sweeper(screen_size=(600, 600), field_size=(10, 10))
     s.run()
 
 if __name__ == "__main__": 

@@ -60,6 +60,7 @@ class Board:
         self._width = field_size[0]
         self._height = field_size[1]
         self._screen_size = screen_size
+        self._state = BoardState.IN_GAME
         
         self._generated = False
         # inicializa a board vazia
@@ -208,11 +209,11 @@ class Board:
                     processed.add(pos)
 
     def report(self, row, col, state):
-        if not self._generated:
-            self._generate(row, col)
-
         if state is TileState.INVISIBLE:
             raise ValueError()
+
+        if not self._generated:
+            self._generate(row, col)
 
         if self._board[row][col].isMine and state is not TileState.FLAGGED:
             self._die()
