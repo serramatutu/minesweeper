@@ -118,16 +118,20 @@ class Board:
     @property
     def state(self):
         return self._state
+
+    @property
+    def size(self):
+        return (self._width, self._height)
+
+    @property
+    def mines(self):
+        return self._mines
     
     def _die(self):
         self._state = BoardState.LOST
 
     def _win(self):
         self._state = BoardState.WON
-
-    @property
-    def size(self):
-        return (self._width, self._height)
 
     
     def _background_color(self, row, col):
@@ -162,8 +166,8 @@ class Board:
         return (0, 180, 0)
             
     def tile_size(self):
-        return (math.floor(self._screen_size[0]/self._width),
-                math.floor(self._screen_size[1]/self._height))
+        return (int(math.floor(self._screen_size[0]/self._width)),
+                int(math.floor(self._screen_size[1]/self._height)))
 
     def position(self, screen_pos):
         w, h = self.tile_size()
@@ -214,7 +218,7 @@ class Board:
             self._die()
             return False
 
-        if self._board[row][col].value is 0:
+        if self._board[row][col].value is 0 and state is not TileState.FLAGGED:
             self._flood(row, col)
         else:
             self._update_tile(row, col, state)
@@ -228,6 +232,9 @@ class Board:
 
     def _update_tile(self, row, col, state):    
         tile = self._board[row][col]
+
+        if tile.state is TileState.VISIBLE:
+            return
 
         if (tile.state is TileState.FLAGGED and
             state is TileState.FLAGGED):
