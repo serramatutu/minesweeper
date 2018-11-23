@@ -6,25 +6,26 @@ from pygame.locals import * # constantes
 
 from board import Board, BoardState, TileState # minesweeper packages
 
+DEFAULT_SCREEN_SIZE = 400
+DEFAULT_FIELD_SIZE = 25
+DEFAULT_MINE_RATIO = 0.125
+
 class Sweeper:
     PANEL_MARGIN = 40
-    DEFAULT_SCREEN_SIZE = 400
-    DEFAULT_FIELD_SIZE = 25
 
     @staticmethod
     def screen_size(field_size, tile_size):
         return (field_size[0] * tile_size[0], field_size[1] * tile_size[1])
 
-    def __init__(self, field_size=None, screen_size=None):
+    def __init__(self, 
+                field_size=(DEFAULT_FIELD_SIZE, DEFAULT_FIELD_SIZE), 
+                screen_size=(DEFAULT_SCREEN_SIZE, DEFAULT_SCREEN_SIZE), 
+                mine_ratio=DEFAULT_MINE_RATIO):
         pygame.init()
 
-        if screen_size is None:
-            screen_size = (Sweeper.DEFAULT_SCREEN_SIZE, Sweeper.DEFAULT_SCREEN_SIZE)
-        self._screen_size = (screen_size[0], screen_size[1] + Sweeper.PANEL_MARGIN)
-
-        if field_size is None:
-            field_size = (Sweeper.DEFAULT_FIELD_SIZE, Sweeper.DEFAULT_FIELD_SIZE)
+        self._screen_size = screen_size
         self._field_size = field_size
+        self._mine_ratio = mine_ratio
 
         self._screen = pygame.display.set_mode(self._screen_size)
         self._board = None
@@ -37,7 +38,8 @@ class Sweeper:
         pygame.display.flip()
 
         self._board = Board(screen_size=(self._screen_size[0], self._screen_size[1] - Sweeper.PANEL_MARGIN), 
-                            field_size=self._field_size)
+                            field_size=self._field_size,
+                            mine_ratio=self._mine_ratio)
 
         self._running = False
         self._start_tick = 0
@@ -60,8 +62,6 @@ class Sweeper:
             self._start_tick = pygame.time.get_ticks()
 
         return self._board.report(row, col, state)
-        
-
 
     def run(self):
         background = pygame.Surface(self._screen.get_size())
@@ -72,6 +72,16 @@ class Sweeper:
         font = pygame.font.Font(None, 40)
 
         clock = pygame.time.Clock()
+
+        # mostra a imagem de inicio
+        info_img = pygame.image.load('info.png')
+        img_size = info_img.get_rect().size
+        pos = ((self._screen_size[0] - img_size[0])//2, (self._screen_size[1] - img_size[1])//2)
+        background.fill((255, 255, 255))
+        background.blit(info_img, pos)
+        self._screen.blit(background, (0, 0))
+        pygame.display.flip() # atualiza tela
+        self.waitstart(clock)
 
         continue_playing = True
         while continue_playing:
